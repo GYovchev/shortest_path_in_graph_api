@@ -1,8 +1,7 @@
 from threading import Lock
-import logging
 from flask import current_app
 
-from .exception import BadGraphDictionaryData, NodeDoesntExist
+from .exception import BadGraphDictionaryData, NodeDoesntExist, NoPathExists
 from .graph import Graph
 
 
@@ -14,39 +13,30 @@ class DistanceEngine():
     __distances: dict = {}
     __graph_access_lock = Lock()
 
-    def set_graph(self, graph: Graph):
-        distances = graph.calculate_distances()
-        self.__graph_access_lock.acquire()
-        try:
-            self.__graph = graph
-            self.__distances = distances
-            return self.__graph
-        finally:
-            self.__graph_access_lock.release()
-
     def set_graph_from_dict(self, graph_data: dict):
         """
-        Takes graph data as dictionary and updates `DistanceEngine`'s `__graph` and `__distances` fields in a thread-safe way
+        Takes graph data as a dictionary and updates the cache in a thread-safe way
         """
+        current_app.logger.debug("Creating graph from dictionary")
         graph = Graph.create_graph_from_dict(graph_data)
+        current_app.logger.debug("Calculating new cache distances between all node pairs")
         distances = graph.calculate_distances()
-        self.__graph_access_lock.acquire()
-        try:
+        with self.__graph_access_lock:
             self.__graph = graph
             self.__distances = distances
             return self.__graph
-        finally:
-            self.__graph_access_lock.release()
-            current_app.logger.info("asdasdsa")
 
     def get_distance(self, node_a: str, node_b: str):
-        self.__graph_access_lock.acquire()
-        try:
+        """
+        Calculates shortest path distance between two nodes of the graph.
+        """
+        with self.__graph_access_lock:
             if not self.__graph.does_node_exists(node_a):
                 raise NodeDoesntExist(node_a)
             if not self.__graph.does_node_exists(node_b):
                 raise NodeDoesntExist(node_b)
-            result = self.__distances[node_a][node_b]
-            return result
-        finally:
-            self.__graph_access_lock.release()
+            current_app.logger.debug("Fetching distance between '{}' and '{}' from the cache".format(node_a, node_b))
+            if node_b not in self.__distances[node_a]:
+                raise NoPathExists(node_a, node_b)
+            distance = self.__distances[node_a][node_b]
+            return distance

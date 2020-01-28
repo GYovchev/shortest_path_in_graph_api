@@ -7,7 +7,7 @@ from .exception import NodeDoesntExist, BadGraphDictionaryData
 from .node import Node
 
 
-class Graph():
+class Graph:
     metadata: dict = {}
     directed: bool = False
     nodes: List[Node] = []
@@ -70,12 +70,17 @@ class Graph():
 
     @staticmethod
     def run_validation_checks_on_graph_data(graph_data: dict):
+        if "graph" not in graph_data:
+            raise BadGraphDictionaryData("'graph' property is missing.")
+        if "name" not in graph_data["graph"]:
+            raise BadGraphDictionaryData("'nodes[graph]' should have a property 'name' of type string.")
+        if "version" not in graph_data["graph"]:
+            raise BadGraphDictionaryData("'nodes[graph]' should have a property 'version' of type number.")
+
         if not "nodes" in graph_data:
             raise BadGraphDictionaryData("'nodes' property is missing.")
-
         if not isinstance(graph_data["nodes"], list):
             raise BadGraphDictionaryData("'nodes' property should be an array.")
-
         for i, node in enumerate(graph_data["nodes"]):
             if "id" not in node or not isinstance(node["id"], str):
                 raise BadGraphDictionaryData("'nodes[{}]' should have a property 'id' of type string.".format(i))
@@ -87,12 +92,12 @@ class Graph():
                 if "source" not in link or not isinstance(link["source"], str):
                     raise BadGraphDictionaryData(
                         "'links[{}]' should have a property 'source' of type string.".format(i))
-                if "target" not in link or not isinstance(link["source"], str):
+                if "target" not in link or not isinstance(link["target"], str):
                     raise BadGraphDictionaryData(
-                        "'links[{}]' should have a property 'source' of type string.".format(i))
+                        "'links[{}]' should have a property 'target' of type string.".format(i))
                 if "attributes" not in link or not isinstance(link["attributes"], dict):
                     raise BadGraphDictionaryData(
-                        "'links[{}]' should have a property 'source' of type string.".format(i))
+                        "'links[{}]' should have an object property 'attributes'.".format(i))
                 if "weight" not in link["attributes"] or not isinstance(link["attributes"]["weight"], (int, float)):
                     raise BadGraphDictionaryData(
                         "'links[{}][attributes]' should have a property 'weight' of type float.".format(i))
